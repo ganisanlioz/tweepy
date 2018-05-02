@@ -1,0 +1,52 @@
+#!/usr/bin/python
+
+import tweepy
+import json
+import sys
+import traceback
+from tweepy.error import TweepError
+
+consumer_key = "AjjMCm2ReGVUXnLvrCXt25RWy"
+consumer_secret = "	II68xBiHxVviWe4Mea4qLZsRSsJHrgKg4agGbNvY9uvwYkSqds"
+access_token = "1474748030-o5KKObiBx88DbnpE2gRH9rUyA2zt1ZI90wt1lAG"
+access_token_secret = "QSUTsOSJq5qc4ScTur1ZN0PzunqAC3pWzMAfYQloVt9QA"
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+
+if len(sys.argv) < 3:
+	print("You must supply a file containing tweet ids, and the name of the output file.")
+	exit(-1)
+
+id_file_name = sys.argv[1]
+id_file = open(id_file_name, "r")
+
+out_file = open(sys.argv[2], "w")
+count = 0
+
+for line in id_file:
+	done = False
+	while not done:
+		try:
+			splits = line.split("\t")
+			id = splits[0]
+			acc = splits[1]
+			classification = splits[2].strip()
+			tweet = api.get_status(int(id))
+			out_file.write(classification + "\t" + acc + "\t" + tweet._json["text"].replace("\n", " ") + "\n")
+			done = True
+		except TweepError as e:
+			print(traceback.format_exc())
+			print("tweet id: " + str(id) + "acc: " + str(acc))
+			print("unable to fetch tweet; continuing")
+			if tweepy.error.is_rate_limit_error_message(e):
+				print("rate limit exceeded; sleeping...")
+				sleep(60 * 15)
+			else:
+				done = True
+				count += 1
+
+print("number of missed tweets: " + str(count))
+id_file.close()
+out_file.close()
